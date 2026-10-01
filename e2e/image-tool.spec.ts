@@ -76,7 +76,7 @@ test("자동 축소하지 않은 PNG가 한도를 넘으면 목표 미달이다"
   await page.getByText("목표 용량 이하로 줄이기").click();
   await page.getByLabel("목표 용량 KB").fill("1");
   await page.getByRole("button", { name: "사진 변환하기" }).click();
-  await expect(page.getByText("목표 미달", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").getByText("목표 미달", { exact: true })).toBeVisible();
   const event = page.waitForEvent("download");
   await page.getByRole("button", { name: "결과 파일 저장" }).click();
   const bytes = await readFile(await (await event).path() as string);
