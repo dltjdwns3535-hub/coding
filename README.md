@@ -54,6 +54,20 @@ GitHub Actions는 잠금 파일로 설치 후 단위 테스트, 타입 검사, �
 
 Next.js·React는 호환되는 보안 패치 버전을 고정했습니다. Next.js가 고정한 하위 PostCSS의 취약점을 피하기 위해 호환 8.x 패치를 override합니다. 향후 업데이트 시 lockfile과 전체 검증을 함께 갱신하세요.
 
+## 확인된 배포 주소
+
+프로덕션 origin은 https://sajinmatchum-tools.pages.dev 입니다. 개별 배포 주소인 `915c08c6.sajinmatchum-tools.pages.dev`를 canonical로 사용하지 않습니다.
+
+```bash
+npm ci
+SITE_URL=https://sajinmatchum-tools.pages.dev npm run build
+npm run package:static
+```
+
+같은 셸에서 전체 검증을 재현하려면 `SITE_URL=https://sajinmatchum-tools.pages.dev npm run verify`를 사용합니다. GitHub Actions에도 같은 `SITE_URL`을 고정해 빌드와 브라우저 검증을 함께 수행합니다. Cloudflare에서 직접 Git 빌드를 구성할 경우에도 Production 환경 변수에 같은 값을 지정하고, 빌드 명령은 `npm run build`, 출력 디렉터리는 `out`으로 설정하세요.
+
+현재 `sajin-matchum-production.zip`은 이 주소용입니다. 미리보기 `sajin-matchum-preview-noindex.zip`과 혼동하지 마세요. 도메인을 변경한다면 이 설정과 CI의 `SITE_URL`을 함께 갱신하고 재빌드해야 합니다. 실제 업로드·배포는 별도 승인/작업이며 이 명령만으로 사이트가 배포되지는 않습니다.
+
 ## 검색 노출 설정과 배포
 
 실제 공개 주소를 아직 정하지 않은 빌드는 미리보기입니다. `SITE_URL` 없이 빌드하면 검색 수집을 막는 `noindex`를 출력하고 가짜 canonical·sitemap 주소를 만들지 않습니다. 이 미리보기 ZIP을 그대로 공개한 뒤 검색 등록만 하는 것으로는 검색에 노출되지 않습니다.
