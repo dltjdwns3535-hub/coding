@@ -10,21 +10,26 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "typecheck": "tsc --noEmit",
+    "start": "python3 -m http.server 4173 --directory out",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "verify": "npm test && npm run typecheck && npm run build && npm run test:e2e && npm audit --audit-level=high",
+    "package:static": "python3 scripts/package-static.py"
   },
   "dependencies": {
-    "next": "15.5.9",
-    "react": "19.1.4",
-    "react-dom": "19.1.4"
+    "next": "15.5.27",
+    "react": "19.1.9",
+    "react-dom": "19.1.9"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.1",
+    "@playwright/test": "1.63.0",
     "@types/node": "24.5.2",
     "@types/react": "19.1.16",
     "@types/react-dom": "19.1.9",
     "typescript": "5.9.2"
+  },
+  "overrides": {
+    "postcss": "8.5.28"
   }
 }

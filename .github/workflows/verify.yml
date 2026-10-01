@@ -24,24 +24,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
-
-      - name: Check for dependency lock file
-        id: lock
-        shell: bash
-        run: |
-          if [[ -f package-lock.json ]]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          cache: npm
 
       - name: Install dependencies from lock file
-        if: steps.lock.outputs.exists == 'true'
         run: npm ci
-
-      - name: Install dependencies and generate first lock file
-        if: steps.lock.outputs.exists != 'true'
-        run: npm install
 
       - name: Run unit tests
         run: npm test
@@ -51,6 +37,9 @@ jobs:
 
       - name: Build static site
         run: npm run build
+
+      - name: Package verified-mode static ZIP
+        run: npm run package:static
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -92,11 +81,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-      - name: Upload generated dependency lock file
-        if: ${{ !cancelled() && steps.lock.outputs.exists != 'true' }}
+      - name: Upload static ZIP
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: generated-package-lock
-          path: package-lock.json
-          if-no-files-found: error
+          name: static-export-zip
+          path: artifacts/*.zip
+          if-no-files-found: warn
           retention-days: 3
