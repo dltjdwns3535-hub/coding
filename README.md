@@ -68,6 +68,8 @@ npm run package:static
 
 Google·네이버에서 발급된 공개 소유 확인 태그는 `lib/site-verification.ts`에 해당 origin 전용으로 보존합니다. 따라서 같은 명령으로 재빌드해도 두 태그가 유지됩니다. `GOOGLE_SITE_VERIFICATION`, `NAVER_SITE_VERIFICATION` 환경 변수는 명시적인 변경이 필요할 때만 덮어씁니다. 도메인이나 소유 계정을 변경하면 새로 발급받은 값을 확인하고 갱신하세요.
 
+AdSense 신청용 공개 계정 메타 태그(`google-adsense-account`)도 같은 origin 전용으로 보존합니다. 필요한 경우 `GOOGLE_ADSENSE_ACCOUNT`로 덮어쓸 수 있습니다. 이 태그 자체는 광고를 표시하거나 추적 코드를 실행하지 않습니다. 현재 광고 스크립트와 `ads.txt`는 포함하지 않습니다.
+
 현재 `sajin-matchum-production.zip`은 이 주소용입니다. 미리보기 `sajin-matchum-preview-noindex.zip`과 혼동하지 마세요. 도메인을 변경한다면 이 설정과 CI의 `SITE_URL`을 함께 갱신하고 재빌드해야 합니다. 실제 업로드·배포는 별도 승인/작업이며 이 명령만으로 사이트가 배포되지는 않습니다.
 
 ## 검색 노출 설정과 배포

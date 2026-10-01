@@ -9,11 +9,17 @@ test("확인된 Google 소유 확인값은 해당 프로덕션 origin에만 적�
 });
 
 test("명시적 소유 확인 환경 변수는 저장된 공개 기본값보다 우선한다", () => {
-  assert.deepEqual(siteVerificationFor(verifiedProductionOrigin, { GOOGLE_SITE_VERIFICATION: " google-override ", NAVER_SITE_VERIFICATION: " naver-override " }), { google: "google-override", naver: "naver-override" });
+  assert.deepEqual(siteVerificationFor(verifiedProductionOrigin, { GOOGLE_SITE_VERIFICATION: " google-override ", NAVER_SITE_VERIFICATION: " naver-override ", GOOGLE_ADSENSE_ACCOUNT: " ca-pub-override " }), { google: "google-override", naver: "naver-override", adsense: "ca-pub-override" });
 });
 
 test("확인된 네이버 소유 확인값은 해당 프로덕션 origin에만 적용한다", () => {
   assert.equal(siteVerificationFor(verifiedProductionOrigin, {}).naver, "f199c49445d16e90de0a50e30fba2839f9e3e0d2");
   assert.equal(siteVerificationFor(undefined, {}).naver, undefined);
   assert.equal(siteVerificationFor("https://github.com", {}).naver, undefined);
+});
+
+test("확인된 AdSense 계정 메타 태그는 해당 프로덕션 origin에만 적용한다", () => {
+  assert.equal(siteVerificationFor(verifiedProductionOrigin, {}).adsense, "ca-pub-5073290913544251");
+  assert.equal(siteVerificationFor(undefined, {}).adsense, undefined);
+  assert.equal(siteVerificationFor("https://github.com", {}).adsense, undefined);
 });

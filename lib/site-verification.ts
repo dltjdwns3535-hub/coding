@@ -4,6 +4,7 @@ export const verifiedProductionOrigin = "https://sajinmatchum-tools.pages.dev";
 const confirmedOwnership = {
   google: "OHdM0gNiN40AS5fbbgnB8ypUor7BGI4CPb3H2Djh1ws",
   naver: "f199c49445d16e90de0a50e30fba2839f9e3e0d2",
+  adsense: "ca-pub-5073290913544251",
 };
 
 export function siteVerificationFor(origin: string | undefined, environment: Record<string, string | undefined> = process.env) {
@@ -11,5 +12,6 @@ export function siteVerificationFor(origin: string | undefined, environment: Rec
   return {
     google: environment.GOOGLE_SITE_VERIFICATION?.trim() || confirmed?.google,
     naver: environment.NAVER_SITE_VERIFICATION?.trim() || confirmed?.naver,
+    adsense: environment.GOOGLE_ADSENSE_ACCOUNT?.trim() || confirmed?.adsense,
   };
 }
