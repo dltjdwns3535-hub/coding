@@ -21,36 +21,76 @@ export default function ImageTool() {
   const [background, setBackground] = useState("#ffffff"); const [useTarget, setUseTarget] = useState(false);
   const [target, setTarget] = useState("500"); const [allowResize, setAllowResize] = useState(false);
   const [status, setStatus] = useState<Status>("idle"); const [message, setMessage] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null); const runId = useRef(0);
+  const inputRef = useRef<HTMLInputElement>(null); const operationId = useRef(0);
   const sourceRef = useRef<Source | null>(null); const resultRef = useRef<Result | null>(null);
+  const pendingLoad = useRef<{ image: HTMLImageElement; url: string } | null>(null);
 
   useEffect(() => { sourceRef.current = source; }, [source]);
   useEffect(() => { resultRef.current = result; }, [result]);
-  useEffect(() => () => { if (sourceRef.current) URL.revokeObjectURL(sourceRef.current.url); if (resultRef.current) URL.revokeObjectURL(resultRef.current.url); }, []);
+  useEffect(() => () => {
+    operationId.current++;
+    if (pendingLoad.current) { pendingLoad.current.image.src = ""; URL.revokeObjectURL(pendingLoad.current.url); }
+    if (sourceRef.current) URL.revokeObjectURL(sourceRef.current.url);
+    if (resultRef.current) URL.revokeObjectURL(resultRef.current.url);
+  }, []);
 
-  function clearResult() { runId.current++; if (result) URL.revokeObjectURL(result.url); setResult(null); setStatus("idle"); setMessage(""); }
-  function reset() { clearResult(); if (source) URL.revokeObjectURL(source.url); setSource(null); setWidth(""); setHeight(""); if (inputRef.current) inputRef.current.value = ""; }
+  function revokeResult() {
+    if (resultRef.current) URL.revokeObjectURL(resultRef.current.url);
+    resultRef.current = null;
+    setResult(null);
+  }
+
+  function invalidateResult() {
+    operationId.current++;
+    revokeResult();
+    setStatus("idle"); setMessage("");
+  }
+
+  function cancelPendingLoad() {
+    if (!pendingLoad.current) return;
+    pendingLoad.current.image.onload = null;
+    pendingLoad.current.image.onerror = null;
+    pendingLoad.current.image.src = "";
+    URL.revokeObjectURL(pendingLoad.current.url);
+    pendingLoad.current = null;
+  }
+
+  function reset() {
+    operationId.current++;
+    cancelPendingLoad(); revokeResult();
+    if (sourceRef.current) URL.revokeObjectURL(sourceRef.current.url);
+    sourceRef.current = null; setSource(null); setWidth(""); setHeight(""); setStatus("idle"); setMessage("");
+    if (inputRef.current) inputRef.current.value = "";
+  }
 
   async function loadFile(file?: File) {
     if (!file) return;
-    clearResult();
+    const id = ++operationId.current;
+    cancelPendingLoad(); revokeResult(); setStatus("processing"); setMessage("이미지를 확인하고 있습니다…");
     if (!ACCEPTED.includes(file.type)) { setStatus("error"); setMessage("지원하지 않는 파일입니다. JPEG, PNG, WebP 이미지를 선택해 주세요."); return; }
     if (file.size > MAX_FILE_BYTES) { setStatus("error"); setMessage(`파일은 최대 ${formatBytes(MAX_FILE_BYTES)}까지 선택할 수 있습니다.`); return; }
     const url = URL.createObjectURL(file); const image = new Image();
+    pendingLoad.current = { image, url };
     try {
       await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error()); image.src = url; });
+      if (id !== operationId.current) { if (pendingLoad.current?.url === url) pendingLoad.current = null; URL.revokeObjectURL(url); return; }
       if (!isSafePixelCount(image.naturalWidth, image.naturalHeight)) throw new Error("pixels");
-      if (source) URL.revokeObjectURL(source.url);
-      setSource({ file, url, image, width: image.naturalWidth, height: image.naturalHeight });
+      pendingLoad.current = null;
+      if (sourceRef.current) URL.revokeObjectURL(sourceRef.current.url);
+      const nextSource = { file, url, image, width: image.naturalWidth, height: image.naturalHeight };
+      sourceRef.current = nextSource; setSource(nextSource);
       setWidth(String(image.naturalWidth)); setHeight(String(image.naturalHeight)); setStatus("idle"); setMessage("");
     } catch (error) {
-      URL.revokeObjectURL(url); setStatus("error");
+      if (pendingLoad.current?.url === url) pendingLoad.current = null;
+      URL.revokeObjectURL(url);
+      if (id !== operationId.current) return;
+      setStatus("error");
       setMessage(error instanceof Error && error.message === "pixels" ? `총 픽셀 수는 최대 ${(MAX_PIXELS / 1_000_000).toFixed(0)}MP까지 처리할 수 있습니다.` : "이미지를 열 수 없습니다. 파일이 손상되었는지 확인해 주세요.");
     }
   }
 
-  function changeWidth(value: string) { clearResult(); setWidth(value); const n = validateDimension(value); if (keepRatio && source && n) setHeight(String(Math.max(1, Math.round(n * source.height / source.width)))); }
-  function changeHeight(value: string) { clearResult(); setHeight(value); const n = validateDimension(value); if (keepRatio && source && n) setWidth(String(Math.max(1, Math.round(n * source.width / source.height)))); }
+  function changeWidth(value: string) { invalidateResult(); setWidth(value); const n = validateDimension(value); if (keepRatio && source && n) setHeight(String(Math.max(1, Math.round(n * source.height / source.width)))); }
+  function changeHeight(value: string) { invalidateResult(); setHeight(value); const n = validateDimension(value); if (keepRatio && source && n) setWidth(String(Math.max(1, Math.round(n * source.width / source.height)))); }
 
   async function convert() {
     if (!source || status === "processing") return;
@@ -58,7 +98,7 @@ export default function ImageTool() {
     if (!wantedWidth || !wantedHeight) { setStatus("error"); setMessage(`가로와 세로는 1~${MAX_DIMENSION.toLocaleString("ko-KR")} 사이의 정수로 입력해 주세요.`); return; }
     if (!isSafePixelCount(wantedWidth, wantedHeight)) { setStatus("error"); setMessage(`결과 이미지의 총 픽셀 수는 ${(MAX_PIXELS / 1_000_000).toFixed(0)}MP 이하여야 합니다.`); return; }
     if (useTarget && !targetKb) { setStatus("error"); setMessage("목표 용량은 1~25,000KB 사이로 입력해 주세요."); return; }
-    const id = ++runId.current; setStatus("processing"); setMessage("브라우저에서 이미지를 변환하고 있습니다…");
+    const id = ++operationId.current; revokeResult(); setStatus("processing"); setMessage("브라우저에서 이미지를 변환하고 있습니다…");
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     try {
       let currentWidth = wantedWidth, currentHeight = wantedHeight, blob: Blob | null = null;
@@ -81,18 +121,19 @@ export default function ImageTool() {
         } else blob = await canvasBlob(canvas, format, 0.92);
         if (blob.type !== format) throw new Error(`${TYPE_LABEL[format]} 형식으로 생성되지 않아 저장을 중단했습니다.`);
         if (!limit || blob.size <= limit || !allowResize) break;
+        if (resizeTry === 8) break;
         const scale = Math.min(0.9, Math.sqrt(limit / blob.size) * 0.92); const next = fitDimensions(currentWidth, currentHeight, scale);
         if (next.width === currentWidth && next.height === currentHeight) break;
         currentWidth = next.width; currentHeight = next.height;
       }
-      if (id !== runId.current) return;
+      if (id !== operationId.current) return;
       if (!blob) throw new Error("결과 파일을 만들지 못했습니다.");
       const met = limit ? blob.size <= limit : null;
-      if (result) URL.revokeObjectURL(result.url);
-      setResult({ blob, url: URL.createObjectURL(blob), width: currentWidth, height: currentHeight, type: format, targetMet: met });
+      const nextResult = { blob, url: URL.createObjectURL(blob), width: currentWidth, height: currentHeight, type: format, targetMet: met };
+      resultRef.current = nextResult; setResult(nextResult);
       setStatus(met === false ? "unmet" : "success");
       setMessage(met === false ? (format === "image/png" ? "목표 미달: PNG는 품질 조절이 적용되지 않습니다. JPEG·WebP를 선택하거나 픽셀 크기를 직접 줄여 보세요." : "목표 미달: 최저 품질과 허용된 범위의 축소로도 목표 용량에 도달하지 못했습니다. 더 작은 픽셀 크기를 설정해 보세요.") : "변환이 완료되었습니다. 결과를 확인하고 저장하세요.");
-    } catch (error) { if (id === runId.current) { setStatus("error"); setMessage(error instanceof Error ? error.message : "변환 중 오류가 발생했습니다. 다시 시도해 주세요."); } }
+    } catch (error) { if (id === operationId.current) { setStatus("error"); setMessage(error instanceof Error ? error.message : "변환 중 오류가 발생했습니다. 다시 시도해 주세요."); } }
   }
 
   function download() {
@@ -114,9 +155,9 @@ export default function ImageTool() {
       </div>
       <div className="settingsPanel">
         <div className="sectionHead"><span className="stepNo">2</span><div><h2>변환 조건</h2><p>필요한 결과 규격을 입력하세요.</p></div></div>
-        <fieldset disabled={!source || status === "processing"}><legend>픽셀 크기</legend><div className="dimensionRow"><label>가로 <span className="inputSuffix"><input aria-label="가로 픽셀" inputMode="numeric" value={width} onChange={e => changeWidth(e.target.value)} /><i>px</i></span></label><span className="times">×</span><label>세로 <span className="inputSuffix"><input aria-label="세로 픽셀" inputMode="numeric" value={height} onChange={e => changeHeight(e.target.value)} /><i>px</i></span></label></div><label className="check"><input type="checkbox" checked={keepRatio} onChange={e => setKeepRatio(e.target.checked)} /> 원본 비율 유지</label>{enlarged && <p className="notice">원본보다 크게 만들면 이미지가 흐려질 수 있습니다.</p>}</fieldset>
-        <fieldset disabled={!source || status === "processing"}><legend>파일 형식</legend><div className="formatGroup">{(["image/jpeg", "image/png", "image/webp"] as OutputFormat[]).map(type => <label key={type} className={format === type ? "selected" : ""}><input type="radio" name="format" value={type} checked={format === type} onChange={() => { clearResult(); setFormat(type); }} />{TYPE_LABEL[type]}</label>)}</div>{format === "image/jpeg" && <label className="colorLabel">투명 영역 배경색 <span><input type="color" value={background} onChange={e => setBackground(e.target.value)} /><code>{background.toUpperCase()}</code></span></label>}</fieldset>
-        <fieldset disabled={!source || status === "processing"}><legend>목표 용량 <em>선택</em></legend><label className="switchLine"><input type="checkbox" checked={useTarget} onChange={e => { clearResult(); setUseTarget(e.target.checked); }} /> 목표 용량 이하로 줄이기</label>{useTarget && <><div className="presets">{[100, 500, 1000].map(n => <button type="button" className={target === String(n) ? "active" : ""} key={n} onClick={() => setTarget(String(n))}>{n === 1000 ? "1MB" : `${n}KB`}</button>)}</div><label className="targetInput">직접 입력 <span className="inputSuffix"><input aria-label="목표 용량 KB" inputMode="decimal" value={target} onChange={e => setTarget(e.target.value)} /><i>KB</i></span></label><p className="helper">1KB = 1,000바이트로 계산합니다.</p>{format === "image/png" && <p className="notice">PNG에는 품질 조절이 적용되지 않으며 생성된 실제 용량으로 판정합니다.</p>}<label className="check"><input type="checkbox" checked={allowResize} onChange={e => setAllowResize(e.target.checked)} /> {format === "image/png" ? "필요하면 픽셀을 자동 축소" : "품질 조절로 부족하면 픽셀도 자동 축소"}</label></>}</fieldset>
+        <fieldset disabled={!source || status === "processing"}><legend>픽셀 크기</legend><div className="dimensionRow"><label>가로 <span className="inputSuffix"><input aria-label="가로 픽셀" inputMode="numeric" value={width} onChange={e => changeWidth(e.target.value)} /><i>px</i></span></label><span className="times">×</span><label>세로 <span className="inputSuffix"><input aria-label="세로 픽셀" inputMode="numeric" value={height} onChange={e => changeHeight(e.target.value)} /><i>px</i></span></label></div><label className="check"><input type="checkbox" checked={keepRatio} onChange={e => { invalidateResult(); setKeepRatio(e.target.checked); }} /> 원본 비율 유지</label>{enlarged && <p className="notice">원본보다 크게 만들면 이미지가 흐려질 수 있습니다.</p>}</fieldset>
+        <fieldset disabled={!source || status === "processing"}><legend>파일 형식</legend><div className="formatGroup">{(["image/jpeg", "image/png", "image/webp"] as OutputFormat[]).map(type => <label key={type} className={format === type ? "selected" : ""}><input type="radio" name="format" value={type} checked={format === type} onChange={() => { invalidateResult(); setFormat(type); }} />{TYPE_LABEL[type]}</label>)}</div>{format === "image/jpeg" && <label className="colorLabel">투명 영역 배경색 <span><input aria-label="JPEG 배경색" type="color" value={background} onChange={e => { invalidateResult(); setBackground(e.target.value); }} /><code>{background.toUpperCase()}</code></span></label>}</fieldset>
+        <fieldset disabled={!source || status === "processing"}><legend>목표 용량 <em>선택</em></legend><label className="switchLine"><input type="checkbox" checked={useTarget} onChange={e => { invalidateResult(); setUseTarget(e.target.checked); }} /> 목표 용량 이하로 줄이기</label>{useTarget && <><div className="presets">{[100, 500, 1000].map(n => <button type="button" className={target === String(n) ? "active" : ""} key={n} onClick={() => { invalidateResult(); setTarget(String(n)); }}>{n === 1000 ? "1MB" : `${n}KB`}</button>)}</div><label className="targetInput">직접 입력 <span className="inputSuffix"><input aria-label="목표 용량 KB" inputMode="decimal" value={target} onChange={e => { invalidateResult(); setTarget(e.target.value); }} /><i>KB</i></span></label><p className="helper">1KB = 1,000바이트로 계산합니다.</p>{format === "image/png" && <p className="notice">PNG에는 품질 조절이 적용되지 않으며 생성된 실제 용량으로 판정합니다.</p>}<label className="check"><input type="checkbox" checked={allowResize} onChange={e => { invalidateResult(); setAllowResize(e.target.checked); }} /> {format === "image/png" ? "필요하면 픽셀을 자동 축소" : "품질 조절로 부족하면 픽셀도 자동 축소"}</label></>}</fieldset>
         <button className="primary" type="button" disabled={!source || status === "processing"} onClick={() => void convert()}>{status === "processing" ? <><span className="spinner" /> 변환 중…</> : "사진 변환하기"}</button>
         {message && <div className={`status ${status}`} role="status"><strong>{status === "success" ? "변환 성공" : status === "unmet" ? "목표 미달" : status === "error" ? "확인 필요" : "처리 중"}</strong><span>{message}</span></div>}
       </div>
