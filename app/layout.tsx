@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { SITE_NAME, siteUrl } from "../lib/site";
+import { siteVerificationFor } from "../lib/site-verification";
 import "./globals.css";
 import "./content.css";
+
+const ownership = siteVerificationFor(siteUrl?.origin);
 
 export const metadata: Metadata = {
   ...(siteUrl ? { metadataBase: siteUrl } : {}),
@@ -10,8 +13,8 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   robots: { index: Boolean(siteUrl), follow: true },
   verification: {
-    ...(process.env.GOOGLE_SITE_VERIFICATION?.trim() ? { google: process.env.GOOGLE_SITE_VERIFICATION.trim() } : {}),
-    ...(process.env.NAVER_SITE_VERIFICATION?.trim() ? { other: { "naver-site-verification": process.env.NAVER_SITE_VERIFICATION.trim() } } : {}),
+    ...(ownership.google ? { google: ownership.google } : {}),
+    ...(ownership.naver ? { other: { "naver-site-verification": ownership.naver } } : {}),
   },
 };
 

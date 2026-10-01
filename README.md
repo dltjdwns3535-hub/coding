@@ -66,6 +66,8 @@ npm run package:static
 
 같은 셸에서 전체 검증을 재현하려면 `SITE_URL=https://sajinmatchum-tools.pages.dev npm run verify`를 사용합니다. GitHub Actions에도 같은 `SITE_URL`을 고정해 빌드와 브라우저 검증을 함께 수행합니다. Cloudflare에서 직접 Git 빌드를 구성할 경우에도 Production 환경 변수에 같은 값을 지정하고, 빌드 명령은 `npm run build`, 출력 디렉터리는 `out`으로 설정하세요.
 
+Google·네이버에서 발급된 공개 소유 확인 태그는 `lib/site-verification.ts`에 해당 origin 전용으로 보존합니다. 따라서 같은 명령으로 재빌드해도 두 태그가 유지됩니다. `GOOGLE_SITE_VERIFICATION`, `NAVER_SITE_VERIFICATION` 환경 변수는 명시적인 변경이 필요할 때만 덮어씁니다. 도메인이나 소유 계정을 변경하면 새로 발급받은 값을 확인하고 갱신하세요.
+
 현재 `sajin-matchum-production.zip`은 이 주소용입니다. 미리보기 `sajin-matchum-preview-noindex.zip`과 혼동하지 마세요. 도메인을 변경한다면 이 설정과 CI의 `SITE_URL`을 함께 갱신하고 재빌드해야 합니다. 실제 업로드·배포는 별도 승인/작업이며 이 명령만으로 사이트가 배포되지는 않습니다.
 
 ## 검색 노출 설정과 배포
