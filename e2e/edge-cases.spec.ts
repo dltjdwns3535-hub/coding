@@ -212,6 +212,7 @@ test("320px 화면에서 파일·목표 설정·결과가 가로로 넘치지 �
   await page.getByLabel("품질 조절로 부족하면 픽셀도 자동 축소", { exact: true }).check();
   await expectNoOverflow(page);
   await convert(page); await expectNoOverflow(page);
+  await page.screenshot({ path: "screenshots/mobile-result-320.png", fullPage: true });
   await expect(page.getByRole("button", { name: "결과 파일 저장", exact: true })).toBeVisible();
 });
 

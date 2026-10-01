@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const paths = ["/", "/guides/target-kb-pixels/", "/guides/image-formats/", "/privacy/"];
 
 test("자바스크립트 없이 한국어 제목·본문·내부 링크를 읽을 수 있다", async ({ browser }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const context = await browser.newContext({ javaScriptEnabled: false, baseURL: "http://127.0.0.1:4173" });
   const page = await context.newPage();
   const titles = new Set<string>();
   for (const path of paths) {
