@@ -58,6 +58,19 @@ jobs:
       - name: Test exported site in Chromium
         run: npm run test:e2e
 
+      - name: Audit dependencies for high-severity vulnerabilities
+        if: ${{ !cancelled() }}
+        run: npm audit --audit-level=high --json > npm-audit.json
+
+      - name: Upload dependency security report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit.json
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Upload browser report, traces, and screenshots
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
